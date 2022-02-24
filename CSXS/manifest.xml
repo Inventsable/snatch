@@ -1,0 +1,54 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<ExtensionManifest ExtensionBundleId="com.snatch" ExtensionBundleVersion="1.0.0" ExtensionBundleName="snatch" Version="8.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <ExtensionList>
+    <Extension Id="com.snatch.panel" Version="1.0.0" />
+  </ExtensionList>
+  <ExecutionEnvironment>
+    <HostList><Host Name="AEFT" Version="[16,99.9]" />
+      <Host Name="PPRO" Version="[13,99.9]" /></HostList>
+    <LocaleList>
+      <Locale Code="All" />
+    </LocaleList>
+    <RequiredRuntimeList>
+      <RequiredRuntime Name="CSXS" Version="8.0" />
+    </RequiredRuntimeList>
+  </ExecutionEnvironment>
+  <DispatchInfoList>
+    <Extension Id="com.snatch.panel">
+      <DispatchInfo>
+        <Resources>
+          <MainPath>./public/index-dev.html</MainPath>
+          <!-- <MainPath>./dist/index.html</MainPath> -->
+          <CEFCommandLine>
+            <Parameter>--disable-features=SameSiteByDefaultCookies,CookiesWithoutSameSiteMustBeSecure,NetworkService</Parameter>
+            <Parameter>--disable-site-isolation-trials</Parameter>          
+            <Parameter>--enable-nodejs</Parameter>
+            <Parameter>--mixed-context</Parameter>
+          </CEFCommandLine>
+        </Resources>
+        <Lifecycle>
+          <AutoVisible>true</AutoVisible>
+        </Lifecycle>
+        <UI>
+          <Type>Panel</Type>
+          <Menu>snatch</Menu>
+          <Geometry>
+            <Size>
+              <Height>400</Height>
+              <Width>400</Width>
+            </Size>
+            <MaxSize>
+              <Height>1000</Height>
+              <Width>1000</Width>
+            </MaxSize>
+            <MinSize>
+              <Height>300</Height>
+              <Width>300</Width>
+            </MinSize>
+          </Geometry>
+          <Icons />
+        </UI>
+      </DispatchInfo>
+    </Extension>
+  </DispatchInfoList>
+</ExtensionManifest>

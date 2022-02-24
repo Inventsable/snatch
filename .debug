@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ExtensionList>
+    <Extension Id="com.snatch.panel">
+        <HostList>
+            <Host Name="AEFT" Port="3320" />
+            <Host Name="PPRO" Port="3321" />
+        </HostList>
+    </Extension>
+</ExtensionList>
