@@ -65,6 +65,7 @@
 
 <script>
 import { evalScript } from "brutalism";
+import spy from "cep-spy";
 const fs = require("fs");
 const ytdl = require("ytdl-core");
 export default {
@@ -173,11 +174,7 @@ export default {
       // };
       let download = await this.downloadAndInjectVideo();
       if (download) {
-        let injection = await evalScript(
-          `importVideo("${this.outputPath
-            .replace(/\\/gm, "/")
-            .replace(/\//gm, "\\\\")}")`
-        );
+        let injection = await evalScript(this.generateJSXText());
         console.log(injection);
       }
     },
@@ -209,6 +206,17 @@ export default {
           })
           .pipe(fs.createWriteStream(this.outputPath));
       });
+    },
+    generateJSXText() {
+      if (spy.appName == "PPRO") {
+        return `app.project.importFiles([new File("${this.outputPath
+          .replace(/\\/gm, "/")
+          .replace(/\//gm, "\\\\")}").fsName]);`;
+      } else {
+        return `app.project.importFile(new ImportOptions(new File("${this.outputPath
+          .replace(/\\/gm, "/")
+          .replace(/\//gm, "\\\\")}")));`;
+      }
     },
     clearData() {
       this.progress = 0;
@@ -242,6 +250,7 @@ export default {
   padding-top: 56.25%;
   height: 0px;
   position: relative;
+  overflow: hidden;
 }
 
 .video-thumbnail {
