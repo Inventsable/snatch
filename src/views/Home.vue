@@ -13,16 +13,25 @@
       prefs-id="url"
       @prefs="(data) => (url = data.value)"
     />
-    <File-Picker
-      folder
-      clearable
-      :fullPath="true"
-      label="Output folder"
-      prefs-id="folder"
-      @prefs="updateOutput"
-      @input="updateOutput"
-      @clear="() => (outputFolder = '')"
-    />
+    <Fold label="Settings" :open="true">
+      <div class="picker-row">
+        <div style="width: 24px">
+          <Toggle v-model="useCustomDir" />
+        </div>
+        <File-Picker
+          folder
+          clearable
+          :disabled="!useCustomDir"
+          :fullPath="true"
+          label="Output folder"
+          prefs-id="folder"
+          @prefs="updateOutput"
+          @input="updateOutput"
+          @clear="() => (outputFolder = '')"
+        />
+      </div>
+      <Toggle label="Audio only" v-model="audioOnly" />
+    </Fold>
     <Fold label="Preview" :open="true">
       <div class="skeleton">
         <div class="skeleton-content">
@@ -64,10 +73,16 @@
 </template>
 
 <script>
+import { mapActions, mapGetters } from "vuex";
 import { evalScript } from "brutalism";
 import spy from "cep-spy";
 const fs = require("fs");
 const ytdl = require("ytdl-core");
+// import path from "path";
+// import util from "util";
+// const exec = util.promisify(require("child_process").exec);
+// import { Pully, Presets } from "pully";
+// const pully = new Pully();
 export default {
   components: {
     "Progress-Bar": require("../components/ProgressBar.vue").default,
@@ -86,12 +101,41 @@ export default {
     outputFolder: "",
     hasDownloaded: false,
     isDownloading: false,
+    useRootDir: false,
   }),
   async mounted() {
+    this.getSettings();
+    console.log(this.settings);
     // If the panel was mounted and prefs are filled, automatically query the URL:
     if (this.url.length) this.checkURL(this.url);
   },
   computed: {
+    ...mapGetters("settings", ["settings"]),
+    useCustomDir: {
+      get() {
+        return !this.settings.useRootDir;
+      },
+      set(val) {
+        this.setUseRootDir(!val);
+      },
+    },
+    audioOnly: {
+      get() {
+        return this.settings.audioOnly;
+      },
+      set(val) {
+        console.log("Setting", val);
+        this.setAudioOnly(val);
+      },
+    },
+    ytdlOptions() {
+      // Likely be best to generate a dropdown containing all format options.
+      // Still unsure how to best solve 1080p, may opt for a CLI tool entirely instead
+      return {
+        filter: this.audioOnly ? "audioonly" : "audioandvideo",
+        quality: this.audioOnly ? "highest" : "highestvideo",
+      };
+    },
     canDownload() {
       return (
         this.hasValidURL &&
@@ -124,10 +168,27 @@ export default {
       return !this.hasNoURL && this.validURL;
     },
     outputPath() {
-      return `${this.outputFolder}/${this.title}.mp4`;
+      return `${this.outputFolder}/${this.title}.mp${
+        this.audioOnly ? "3" : "4"
+      }`;
+    },
+  },
+  watch: {
+    settings: {
+      handler(evt) {
+        if (this.hasDownloaded) this.hasDownloaded = false;
+      },
+      deep: true,
     },
   },
   methods: {
+    ...mapActions("settings", [
+      "setUseRootDir",
+      "setUrl",
+      "setOutputDir",
+      "setAudioOnly",
+      "getSettings",
+    ]),
     updateOutput(data) {
       if (Array.isArray(data) && data.length) this.outputFolder = data[0];
       else {
@@ -135,6 +196,7 @@ export default {
       }
     },
     async checkURL(data) {
+      this.setUrl(data);
       this.testedURL = false;
       this.hasDownloaded = false;
       try {
@@ -172,13 +234,13 @@ export default {
       //     foo: "bar",
       //   },
       // };
-      let download = await this.downloadAndInjectVideo();
+      let download = await this.downloadAndInjectVideoYTDL();
       if (download) {
         let injection = await evalScript(this.generateJSXText());
         console.log(injection);
       }
     },
-    async downloadAndInjectVideo() {
+    async downloadAndInjectVideoPully() {
       if (!this.canDownload) {
         console.error("Func is running without valid URL or params");
         return null;
@@ -187,10 +249,20 @@ export default {
         this.progress = 0;
         this.hasDownloaded = false;
         this.isDownloading = true;
-        ytdl(this.url, {
-          filter: "audioandvideo",
-          quality: "highestvideo",
-        })
+      });
+    },
+    async downloadAndInjectVideoYTDL() {
+      if (!this.canDownload) {
+        console.error("Func is running without valid URL or params");
+        return null;
+      }
+      return new Promise((resolve, reject) => {
+        console.log(this.settings.audioOnly);
+        console.log(this.outputPath);
+        this.progress = 0;
+        this.hasDownloaded = false;
+        this.isDownloading = true;
+        ytdl(this.url, this.ytdlOptions)
           .on("progress", (chunkSize, downloaded, size) => {
             this.progress = Math.round((downloaded / size) * 100);
           })
@@ -236,6 +308,14 @@ export default {
   min-height: 580;
   min-width: 300px;
 }
+
+.picker-row {
+  display: flex;
+  flex-wrap: none;
+  justify-content: center;
+  align-items: center;
+}
+
 .skeleton {
   width: 100%;
   box-sizing: border-box;

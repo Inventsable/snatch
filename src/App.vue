@@ -4,8 +4,17 @@
       Dynamic menu component reactively handles all flyout and context menus.
       https://github.com/Inventsable/brutalism/tree/master/components/Menus
      -->
-    <Menus refresh debug />
-    <Panel debug>
+    <Menus
+      refresh
+      debug
+      :context="[
+        {
+          label: 'Reset',
+          callback: this.testClick,
+        },
+      ]"
+    />
+    <Panel>
       <router-view />
     </Panel>
     <!-- <Tabs invert :routes="routes" /> -->
@@ -13,6 +22,7 @@
 </template>
 
 <script>
+import { mapActions } from "vuex";
 import { evalScript } from "brutalism";
 export default {
   data: () => ({
@@ -22,8 +32,9 @@ export default {
     ],
   }),
   methods: {
+    ...mapActions("settings", ["deleteAll"]),
     testClick(item) {
-      console.log("Context menu click:", item);
+      this.deleteAll();
     },
     checkMenu(item, index, val) {
       console.log(item, index, val);

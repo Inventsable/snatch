@@ -1,6 +1,6 @@
 {
   "name": "snatch",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "private": true,
   "scripts": {
     "serve": "vue-cli-service serve",
@@ -18,9 +18,12 @@
     "cluecumber": "^0.1.1",
     "core-js": "^3.1.2",
     "gehenna": "^1.1.4",
+    "pully": "^2.7.0",
     "starlette": "^1.0.7",
+    "util": "^0.12.4",
     "vue": "^2.6.10",
     "vue-router": "^3.1.6",
+    "vuex": "^3.6.2",
     "ytdl-core": "^4.10.1"
   },
   "devDependencies": {
