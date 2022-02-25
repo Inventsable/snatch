@@ -6,13 +6,18 @@ const state = {
     url: "",
     outputDir: "",
     useRootDir: false,
+    bestQuality: false,
   },
 };
 
 const mutations = {
   setAudioOnly(state, value) {
-    console.log("Audio param set:", value);
-    state.settings.audioOnly = value;
+    if (value) state.settings.audioOnly = value;
+    state.settings.bestQuality = false;
+  },
+  setBestQuality(state, value) {
+    if (value) state.settings.audioOnly = false;
+    state.settings.bestQuality = value;
   },
   setUseRootDir(state, value) {
     state.settings.useRootDir = value;
@@ -33,6 +38,10 @@ const actions = {
     commit("setAudioOnly", value);
     dispatch("saveSettings");
   },
+  setBestQuality({ commit, dispatch }, value) {
+    commit("setBestQuality", value);
+    dispatch("saveSettings");
+  },
   setUseRootDir({ commit, dispatch }, value) {
     commit("setUseRootDir", value);
     dispatch("saveSettings");
@@ -49,12 +58,9 @@ const actions = {
     let settings = LocalStorage.getItem("settings");
     if (settings)
       commit("setSettings", isJSON(settings) ? JSON.parse(settings) : settings);
-
-    console.log("Settings retrieved");
   },
   saveSettings({ state }) {
     LocalStorage.setItem("settings", JSON.stringify(state.settings));
-    console.log("Settings saved");
   },
   // Should always give yourself the ability to remove from Vuex,
   // otherwise you can find yourself in a spot where you can't get rid of data:

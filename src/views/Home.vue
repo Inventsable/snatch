@@ -30,7 +30,14 @@
           @clear="() => (outputFolder = '')"
         />
       </div>
-      <Toggle label="Audio only" v-model="audioOnly" />
+      <div class="toggle-wrapper">
+        <Toggle
+          label="Audio only"
+          v-model="audioOnly"
+          style="margin-right: 16px"
+        />
+        <Toggle label="Best video quality" v-model="bestQuality" />
+      </div>
     </Fold>
     <Fold label="Preview" :open="true">
       <div class="skeleton">
@@ -58,15 +65,13 @@
     <Divider />
     <Button
       :disabled="!canDownload"
-      :label="
-        hasDownloaded ? 'Done' : isDownloading ? `${this.progress}%` : 'Snatch'
-      "
+      :label="contextualLabelString"
       uppercase
       :icon="hasDownloaded ? 'check' : isDownloading ? '' : 'download'"
       block
       @click="beginDownload"
       :color="
-        hasDownloaded ? 'var(--color-selection)' : 'var(--color-button-primary)'
+        isComplete ? 'var(--color-selection)' : 'var(--color-button-primary)'
       "
     />
   </Wrapper>
@@ -78,9 +83,14 @@ import { evalScript } from "brutalism";
 import spy from "cep-spy";
 const fs = require("fs");
 const ytdl = require("ytdl-core");
+const cp = require("child_process");
+const readline = require("readline");
+const ffmpegLocale = `${spy.path.root}/ffmpeg`;
+// const ffmpeg = require("../../ffmpeg/");
+
 // import path from "path";
-// import util from "util";
-// const exec = util.promisify(require("child_process").exec);
+import util from "util";
+const exec = util.promisify(require("child_process").exec);
 // import { Pully, Presets } from "pully";
 // const pully = new Pully();
 export default {
@@ -99,9 +109,15 @@ export default {
     channelLink: "",
     channelName: "",
     outputFolder: "",
+    totalChunkSize: 0,
+    addedAudioChunks: false,
+    addedVideoChunks: false,
     hasDownloaded: false,
     isDownloading: false,
     useRootDir: false,
+    chunkPrefix: 0,
+    isComplete: false,
+    contextText: "",
   }),
   async mounted() {
     this.getSettings();
@@ -111,6 +127,15 @@ export default {
   },
   computed: {
     ...mapGetters("settings", ["settings"]),
+    contextualLabelString() {
+      return this.isComplete
+        ? "Done"
+        : this.isDownloading && !this.hasDownloaded
+        ? `${this.contextText} ${this.progress}%`
+        : this.hasDownloaded
+        ? this.contextText
+        : "Snatch";
+    },
     useCustomDir: {
       get() {
         return !this.settings.useRootDir;
@@ -124,8 +149,15 @@ export default {
         return this.settings.audioOnly;
       },
       set(val) {
-        console.log("Setting", val);
         this.setAudioOnly(val);
+      },
+    },
+    bestQuality: {
+      get() {
+        return this.settings.bestQuality;
+      },
+      set(val) {
+        this.setBestQuality(val);
       },
     },
     ytdlOptions() {
@@ -168,6 +200,7 @@ export default {
       return !this.hasNoURL && this.validURL;
     },
     outputPath() {
+      // @NOTE - Should be replaced with dynamic formats
       return `${this.outputFolder}/${this.title}.mp${
         this.audioOnly ? "3" : "4"
       }`;
@@ -185,6 +218,7 @@ export default {
     ...mapActions("settings", [
       "setUseRootDir",
       "setUrl",
+      "setBestQuality",
       "setOutputDir",
       "setAudioOnly",
       "getSettings",
@@ -234,22 +268,102 @@ export default {
       //     foo: "bar",
       //   },
       // };
-      let download = await this.downloadAndInjectVideoYTDL();
+
+      // Ensure that no read/write streams fail from conflicting pre-existing file access
+      try {
+        if (fs.existsSync(this.outputPath)) fs.unlinkSync(this.outputPath);
+      } catch (err) {
+        console.error(`Not able to delete previous file:`, err);
+      }
+
+      let download;
+      if (this.bestQuality) download = await this.downloadAndMuxVideo();
+      else download = await this.downloadAndInjectVideoYTDL();
       if (download) {
         let injection = await evalScript(this.generateJSXText());
         console.log(injection);
       }
     },
-    async downloadAndInjectVideoPully() {
-      if (!this.canDownload) {
-        console.error("Func is running without valid URL or params");
-        return null;
-      }
+    async downloadTest() {
+      const { stdout, stderr } = await exec(`"${ffmpegLocale}/ffmpeg" -help`);
+      console.log(stdout, stderr);
+    },
+    async getHighestAudio(uid) {
+      this.contextText = "Snatching audio";
       return new Promise((resolve, reject) => {
-        this.progress = 0;
-        this.hasDownloaded = false;
-        this.isDownloading = true;
+        ytdl(this.url, {
+          filter: "audioonly",
+          quality: "highest",
+        })
+          .on("progress", (chunkSize, downloaded, size) => {
+            if (!this.chunkPrefix) this.chunkPrefix = size;
+            this.progress = Math.round(
+              (downloaded / this.totalChunkSize) * 100
+            );
+          })
+          .on("finish", () => {
+            resolve(true);
+          })
+          .pipe(fs.createWriteStream(`${this.outputFolder}/${uid}.mp3`));
       });
+    },
+    async getHighestVideo(uid) {
+      this.contextText = "Snatching video";
+      return new Promise((resolve, reject) => {
+        ytdl(this.url, {
+          filter: "videoonly",
+          quality: "highest",
+        })
+          .on("progress", (chunkSize, downloaded, size) => {
+            this.progress = Math.round(
+              ((downloaded + this.chunkPrefix) / this.totalChunkSize) * 100
+            );
+          })
+          .on("finish", () => {
+            resolve(true);
+          })
+          .pipe(fs.createWriteStream(`${this.outputFolder}/${uid}.mp4`));
+      });
+    },
+    async downloadAndMuxVideo() {
+      this.contextText = "Prepping";
+      this.progress = this.chunkPrefix = 0;
+      this.isDownloading = true;
+      this.hasDownloaded = false;
+      this.isComplete = false;
+      const uid = new Date().getTime().toString();
+
+      let info = await ytdl.getInfo(this.url);
+      let audioLength = ytdl.chooseFormat(info.formats, {
+        filter: "audioonly",
+        quality: "highest",
+      }).contentLength;
+      let videoLength = ytdl.chooseFormat(info.formats, {
+        filter: "videoonly",
+        quality: "highest",
+      }).contentLength;
+      this.totalChunkSize = +audioLength + +videoLength;
+      const audio = await this.getHighestAudio(uid);
+      const video = await this.getHighestVideo(uid);
+      this.hasDownloaded = true;
+      let cmdString = `"${ffmpegLocale}/ffmpeg" -i "${this.outputFolder}/${uid}.mp4" -i "${this.outputFolder}/${uid}.mp3" -c:v copy -c:a aac -b:a 128k -ar 48000 -ac 2 "${this.outputFolder}/${this.title}.mp4"`;
+      console.log(cmdString);
+      this.contextText = "Mixing audio and video...";
+      const { stdout, stderr } = await exec(cmdString);
+      console.log(stdout, stderr);
+      console.log("Muxed");
+      this.contextText = "Cleaning up temp files...";
+      fs.unlinkSync(`${this.outputFolder}/${uid}.mp3`);
+      fs.unlinkSync(`${this.outputFolder}/${uid}.mp4`);
+      this.contextText = "Importing...";
+      let injection = await evalScript(this.generateJSXText());
+      if (injection) {
+        console.log("Done?");
+      }
+      this.isDownloading = false;
+      this.isComplete = true;
+      this.contextText = "Done";
+      // fs.unlinkSync()
     },
     async downloadAndInjectVideoYTDL() {
       if (!this.canDownload) {
@@ -257,6 +371,7 @@ export default {
         return null;
       }
       return new Promise((resolve, reject) => {
+        this.contextText = "Snatching";
         console.log(this.settings.audioOnly);
         console.log(this.outputPath);
         this.progress = 0;
@@ -267,7 +382,6 @@ export default {
             this.progress = Math.round((downloaded / size) * 100);
           })
           .on("finish", () => {
-            console.log("Closed?");
             this.hasDownloaded = true;
             this.isDownloading = false;
             resolve(true);
@@ -313,6 +427,11 @@ export default {
   display: flex;
   flex-wrap: none;
   justify-content: center;
+  align-items: center;
+}
+.toggle-wrapper {
+  display: flex;
+  justify-content: flex-start;
   align-items: center;
 }
 
