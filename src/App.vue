@@ -5,7 +5,7 @@
       https://github.com/Inventsable/brutalism/tree/master/components/Menus
      -->
     <Menus refresh debug />
-    <Panel>
+    <Panel debug>
       <router-view />
     </Panel>
     <!-- <Tabs invert :routes="routes" /> -->
