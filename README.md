@@ -76,10 +76,6 @@ It's best to do it here on Github in the Issues panel. I do actively respond to 
 
 I had a lot of requests for this, so I've included a donate link in the context menu when you right click on the panel. This tool is and will always be free, but if it happens to be a godsend for your work in particular and you feel the need to show some appreciation, I certainly appreciate it as well -- not to mention this gives me a lot more incentive and freedom to actively pursue updating this tool and adding requested features.
 
-## Why does it say "used by node-jquest" in the Github sidepanel?
-
-🤷 Cue Metal Gear Solid time paradox screen. Github looks through `./package.json` files to match names and will automate this, and apparently there was an NPM package named [snatch](https://github.com/coverslide/node-jquest/blob/master/package.json#L13) used in this repository. This isn't an NPM module and I promise that isn't exporting anything, but apparently Github has mistaken this repo as matching a 9+ year old NPM package because the names are the same and unfortunately I have no control over that.
-
 ## Why does this look so similar to [Timelord and Anubis from Battle Axe](https://www.battleaxe.co/)?
 
 Because it shares the same [open source component library](https://github.com/battleaxedotco/brutalism#-brutalism) as them, which you're welcome to use too.
