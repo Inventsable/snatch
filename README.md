@@ -12,6 +12,8 @@ This is not a means to promote or facilitate piracy. This is a personal tool I'v
 
 ## [By clicking this link and downloading the ZXP you're agreeing to the above and that you are solely responsible for any and all legal implications of this tool](https://github.com/Inventsable/snatch/raw/master/archive/snatch_1.3.0.zxp)
 
+Above link not working? You can visit the [./archive](https://github.com/Inventsable/snatch/tree/master/archive) folder of this repo to see all versions at any time. Click the bottom-most .zxp then press the Download or View Raw button to get it.
+
 ---
 
 # FAQ
