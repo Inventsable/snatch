@@ -41,7 +41,6 @@
           v-model="videoOnly"
           style="margin-right: 16px"
         />
-        <Toggle label="Best of both" v-model="bestQuality" />
       </div>
     </Fold>
     <Fold label="Preview" :open="true">
@@ -81,14 +80,6 @@ import { evalScript } from "brutalism";
 import spy from "cep-spy";
 const fs = require("fs");
 const ytdl = require("ytdl-core");
-const cp = require("child_process");
-const readline = require("readline");
-const ffmpegLocale = `${spy.path.root}/ffmpeg`;
-
-// Promisified shell commands for running FFMPEG async:
-import util from "util";
-const exec = util.promisify(require("child_process").exec);
-
 export default {
   components: {
     "Progress-Bar": require("../components/ProgressBar.vue").default,
@@ -149,6 +140,19 @@ export default {
       },
       set(val) {
         this.setUseRootDir(!val);
+        // Noticed a discrepancy when toggling customDir, where File Picker value
+        // was being ignored due to value not having been recently set to this.outputFolder
+        if (val) {
+          let storage = window.localStorage;
+          let data = storage.getItem("brutalism-prefs");
+          if (data) {
+            data = JSON.parse(data);
+            if (data && data.filepicker) {
+              let target = data.filepicker.find((i) => i.id == "folder");
+              if (target) this.outputFolder = target.value;
+            }
+          }
+        }
       },
     },
     audioOnly: {
@@ -348,91 +352,15 @@ export default {
         console.error(`Not able to delete previous file:`, err);
       }
 
-      let download;
-      if (this.bestQuality) download = await this.downloadAndMuxVideo();
-      else download = await this.downloadAndInjectVideoYTDL();
+      let download = await this.downloadAndInjectVideoYTDL();
       if (download) {
         let injection = await evalScript(this.generateJSXText());
         console.log(injection);
+      } else {
+        this.createError("Youtube video not available for download");
       }
       this.isDownloading = false;
       this.isComplete = true;
-    },
-    async downloadTest() {
-      const { stdout, stderr } = await exec(`"${ffmpegLocale}/ffmpeg" -help`);
-      console.log(stdout, stderr);
-    },
-    async getHighestAudio(uid) {
-      this.contextText = "Snatching audio";
-      return new Promise((resolve, reject) => {
-        ytdl(this.url, {
-          filter: "audioonly",
-          quality: "highest",
-        })
-          .on("progress", (chunkSize, downloaded, size) => {
-            if (!this.chunkPrefix) this.chunkPrefix = size;
-            this.progress = Math.round(
-              (downloaded / this.totalChunkSize) * 100
-            );
-          })
-          .on("finish", () => {
-            resolve(true);
-          })
-          .pipe(fs.createWriteStream(`${this.outputFolder}/${uid}.mp3`));
-      });
-    },
-    async getHighestVideo(uid) {
-      this.contextText = "Snatching video";
-      return new Promise((resolve, reject) => {
-        ytdl(this.url, {
-          filter: "videoonly",
-          quality: "highest",
-        })
-          .on("progress", (chunkSize, downloaded, size) => {
-            this.progress = Math.round(
-              ((downloaded + this.chunkPrefix) / this.totalChunkSize) * 100
-            );
-          })
-          .on("finish", () => {
-            resolve(true);
-          })
-          .pipe(fs.createWriteStream(`${this.outputFolder}/${uid}.mp4`));
-      });
-    },
-    async downloadAndMuxVideo() {
-      this.contextText = "Prepping";
-      const uid = new Date().getTime().toString();
-
-      let info = await ytdl.getInfo(this.url);
-      let audioLength = ytdl.chooseFormat(info.formats, {
-        filter: "audioonly",
-        quality: "highest",
-      }).contentLength;
-      let videoLength = ytdl.chooseFormat(info.formats, {
-        filter: "videoonly",
-        quality: "highest",
-      }).contentLength;
-      this.totalChunkSize = +audioLength + +videoLength;
-      const audio = await this.getHighestAudio(uid);
-      const video = await this.getHighestVideo(uid);
-      this.hasDownloaded = true;
-      // let debugString = `"${} -v warning -progress /dev/stdout -i in.mp4 out.mp4`
-      let cmdString = `"${ffmpegLocale}/ffmpeg" -i "${this.outputFolder}/${uid}.mp4" -i "${this.outputFolder}/${uid}.mp3" -c:v libx264 -c:a aac -map 0:v:0 -map 1:a:0 "${this.outputFolder}/${this.title}.mp4"`;
-      this.contextText = "Muxing (this can take a while)";
-      const { stdout, stderr } = await exec(cmdString);
-      console.log(stdout, stderr);
-      this.contextText = "Cleaning up temp files...";
-      fs.unlinkSync(`${this.outputFolder}/${uid}.mp3`);
-      fs.unlinkSync(`${this.outputFolder}/${uid}.mp4`);
-      this.contextText = "Importing...";
-      let injection = await evalScript(this.generateJSXText());
-      if (injection) {
-        console.log("Done");
-      }
-      this.isDownloading = false;
-      this.isComplete = true;
-      this.contextText = "Done";
-      // fs.unlinkSync()
     },
     async downloadAndInjectVideoYTDL() {
       this.contextText = "Determining best format";
