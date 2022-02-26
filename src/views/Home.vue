@@ -416,7 +416,6 @@ export default {
       const audio = await this.getHighestAudio(uid);
       const video = await this.getHighestVideo(uid);
       this.hasDownloaded = true;
-      // let debugString = `"${} -v warning -progress /dev/stdout -i in.mp4 out.mp4`
       let cmdString = `"${ffmpegLocale}/ffmpeg" -i "${this.outputFolder}/${uid}.mp4" -i "${this.outputFolder}/${uid}.mp3" -c:v libx264 -c:a aac -map 0:v:0 -map 1:a:0 "${this.outputFolder}/${this.title}.mp4"`;
       this.contextText = "Muxing (this can take a while)";
       const { stdout, stderr } = await exec(cmdString);
