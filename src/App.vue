@@ -13,7 +13,7 @@
         },
       ]"
     />
-    <Panel no-utils script-path="host.jsx">
+    <Panel no-utils script-path="./host.jsx">
       <router-view />
     </Panel>
   </div>

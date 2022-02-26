@@ -240,13 +240,13 @@ export default {
     hasError(val) {
       this.setCSS("--error-top", `${val ? 0 : -70}px`);
       let newVal = this.getCSS("--error-top");
-      console.log("New top is:", newVal);
       if (val)
         setTimeout(() => {
           document.addEventListener("click", this.closeError, { once: true });
         }, 120);
       else {
         document.removeEventListener("click", this.closeError);
+        this.progress = 0;
       }
     },
   },
@@ -336,13 +336,14 @@ export default {
       let result;
       if (spy.appName == "AEFT") {
         result = await evalScript(`(function() {
-          return app.project.file.fsName;
+          return File(app.project.file).parent.fsName;
         }())`);
       } else {
         result = await evalScript(`(function() {
           return File(app.project.path).parent.fsName;
         }())`);
       }
+      console.log(result);
       if (/evalscript\serror/i.test(result)) {
         console.error("Eval error, silent failure");
         this.createError("Project must be saved first");
@@ -364,7 +365,16 @@ export default {
         let parentRoot = await this.getParentRootFromJSX();
         if (parentRoot) {
           console.log(this.outputFolder);
-          this.outputFolder = parentRoot;
+          if (
+            (/(support files|library)/i.test(parentRoot) &&
+              /adobe (after effects|premiere pro) \d{1,}/i.test(parentRoot)) ||
+            (/applications/i.test(parentRoot) && /adobe/i.test(parentRoot))
+          ) {
+            this.createError("Must save project before using it's root path");
+            return null;
+          } else {
+            this.outputFolder = parentRoot;
+          }
         } else {
           this.isDownloading = false;
           return null;
@@ -373,7 +383,12 @@ export default {
 
       // Ensure that no read/write streams fail from conflicting pre-existing file access
       try {
-        if (fs.existsSync(this.outputPath)) fs.unlinkSync(this.outputPath);
+        if (fs.existsSync(this.outputPath)) {
+          console.log("File exists:", this.outputPath);
+          fs.unlinkSync(this.outputPath);
+        } else {
+          console.log("File does not exist:", this.outputPath);
+        }
       } catch (err) {
         this.createError(
           "File of this same path is already in use and locked by the app"
@@ -385,8 +400,12 @@ export default {
         this.hasDownloaded = false;
         return null;
       }
-
-      let download = await this.downloadAndInjectVideoYTDL();
+      let hasError = false;
+      let download = await this.downloadAndInjectVideoYTDL().catch((err) => {
+        hasError = true;
+        return null;
+      });
+      if (hasError) return null;
       if (download) {
         let injection = await evalScript(this.generateJSXText());
         console.log(injection);
@@ -419,7 +438,13 @@ export default {
               this.createError("Video unavailable");
               reject(false);
             })
-            .pipe(fs.createWriteStream(this.outputPath));
+            .pipe(fs.createWriteStream(this.outputPath))
+            .on("error", (err) => {
+              this.createError("Cannot overwrite file already in use");
+              this.progress = 0;
+              this.isDownloading = false;
+              reject(null);
+            });
         } catch (err) {
           console.error(err);
           this.createError("Video unavailable");
@@ -478,7 +503,7 @@ export default {
   justify-content: center;
   display: flex;
   top: var(--error-top);
-  transition: top 120ms var(--quad) 20ms;
+  transition: top 160ms var(--quad) 20ms;
   left: 0;
   width: 100vw;
   padding: 16px 10px 10px 10px;
