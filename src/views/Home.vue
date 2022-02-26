@@ -260,9 +260,6 @@ export default {
       "setVideoOnly",
       "getSettings",
     ]),
-    simulateError() {
-      this.createError("Hello world");
-    },
     closeError() {
       this.hasError = false;
     },
@@ -379,9 +376,14 @@ export default {
         if (fs.existsSync(this.outputPath)) fs.unlinkSync(this.outputPath);
       } catch (err) {
         this.createError(
-          "File with this same name is already in use by the app"
+          "File of this same path is already in use and locked by the app"
         );
         console.error(`Not able to delete previous file:`, err);
+        this.isDownloading = false;
+        this.progress = 0;
+        this.isComplete = false;
+        this.hasDownloaded = false;
+        return null;
       }
 
       let download = await this.downloadAndInjectVideoYTDL();
