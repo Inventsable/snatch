@@ -32,6 +32,10 @@ Theoretically, but it's something I'd need to devote a lot of time to because yt
 
 As of v1.1, there are new settings that allow you to Snatch the best audio, best video, or (when both are disabled) snatch the default best combination up to 720p.
 
+## Is this sketchy?
+
+I designed the tool I wanted to use because I was tired of relying on sketchy websites or programs I couldn't trust only to import fair use content into PPRO any way. If it were sketchy, I wouldn't be putting all the exposed source code on my Github profile with my real name, credentials, and contact information. I've nothing to hide and there will never be any kind of advertising or file injection via this tool provided it isn't modified and distributed by someone other than me.
+
 ## Can it download 1080p with audio?
 
 Currently >1080p downloads without audio because Youtube does not stream them together. I spent a few hours getting this to work through an FFMPEG binary. The short answer: yes but it's extremely slow. The long of it: right now the panel is 3mB total, adding FFMPEG brings the size up to 41mB which makes it load and run much slower. Re-encoding (at least with the settings I'd used) HD footage with HD audio was also very slow, taking about 2 minutes for a video with a runtime of 3:25. It'd actually be far quicker to Snatch the best video and Snatch the best audio or download these separately and align them in your timeline, and it doesn't make much sense for a workflow tool to be needlessly slow.
@@ -71,6 +75,10 @@ It's best to do it here on Github in the Issues panel. I do actively respond to 
 ## Can I donate or buy you a coffee?
 
 I had a lot of requests for this, so I've included a donate link in the context menu when you right click on the panel. This tool is and will always be free, but if it happens to be a godsend for your work in particular and you feel the need to show some appreciation, I certainly appreciate it as well -- not to mention this gives me a lot more incentive and freedom to actively pursue updating this tool and adding requested features.
+
+## Why does it say "used by node-jquest" in the Github sidepanel?
+
+🤷 Cue Metal Gear Solid time paradox screen. Github looks through `./package.json` files to match names and will automate this, and apparently there was an NPM package named [snatch](https://github.com/coverslide/node-jquest/blob/master/package.json#L13) used in this repository. This isn't an NPM module and I promise that isn't exporting anything, but apparently Github has mistaken this repo as matching a 9+ year old NPM package because the names are the same and unfortunately I have no control over that.
 
 ## Why does this look so similar to [Timelord and Anubis from Battle Axe](https://www.battleaxe.co/)?
 
