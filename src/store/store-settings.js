@@ -95,8 +95,11 @@ const actions = {
     let defaults = {
       settings: {
         audioOnly: false,
+        videoOnly: false,
         url: "",
         outputDir: "",
+        useRootDir: false,
+        bestQuality: false,
       },
     };
     Object.keys(defaults).forEach((key) => {

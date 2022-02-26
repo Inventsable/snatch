@@ -1,5 +1,16 @@
 <template>
   <Wrapper class="home-wrapper">
+    <div
+      class="error-container"
+      @mouseenter="hoverError = true"
+      @mouseleave="hoverError = false"
+    >
+      <div class="error-content">
+        <Icon name="alert-circle" style="margin-top: -6px; margin-right: 6px" />
+        <Anno>{{ errorText }}</Anno>
+      </div>
+      <Button flat icon="close" @click="closeError" width="20px" />
+    </div>
     <Progress-Bar delay="0ms" duration="60ms" :percent="progress" :size="3" />
     <Input
       label="URL"
@@ -76,6 +87,7 @@
 
 <script>
 import { mapActions, mapGetters } from "vuex";
+import omodei from "omodei";
 import { evalScript } from "brutalism";
 import spy from "cep-spy";
 const fs = require("fs");
@@ -90,7 +102,6 @@ export default {
     validURL: false,
     title: "",
     thumbnail: "",
-    quality: "highest",
     hasFocus: false,
     testedURL: false,
     channelLink: "",
@@ -106,9 +117,12 @@ export default {
     isComplete: false,
     contextText: "",
     hasError: false,
-    errorText: "",
+    errorText: "Something went wrong",
+    hoverError: false,
   }),
   async mounted() {
+    // Getting nice transitions and cubic bezier values from google motion design:
+    omodei.assignLibraryByAuthor("google");
     this.getSettings();
     console.log(this.settings);
     // If the panel was mounted and prefs are filled, automatically query the URL:
@@ -223,6 +237,18 @@ export default {
       },
       deep: true,
     },
+    hasError(val) {
+      this.setCSS("--error-top", `${val ? 0 : -70}px`);
+      let newVal = this.getCSS("--error-top");
+      console.log("New top is:", newVal);
+      if (val)
+        setTimeout(() => {
+          document.addEventListener("click", this.closeError, { once: true });
+        }, 120);
+      else {
+        document.removeEventListener("click", this.closeError);
+      }
+    },
   },
   methods: {
     ...mapActions("settings", [
@@ -234,6 +260,12 @@ export default {
       "setVideoOnly",
       "getSettings",
     ]),
+    simulateError() {
+      this.createError("Hello world");
+    },
+    closeError() {
+      this.hasError = false;
+    },
     async ytdlOptions() {
       // Likely be best to generate a dropdown containing all format options.
       // Still unsure how to best solve 1080p, may opt for a CLI tool entirely instead
@@ -278,7 +310,6 @@ export default {
       this.hasDownloaded = false;
       try {
         let info = await ytdl.getInfo(data).catch((err) => {
-          console.log("Caught exception");
           this.validURL = false;
           this.testedURL = true;
         });
@@ -295,7 +326,8 @@ export default {
         this.validURL = true;
         this.testedURL = true;
       } catch (err) {
-        console.log(err);
+        console.error(err);
+        // Shouldn't spam the user with an error message here, reserve it for meaningful ones
         this.validURL = false;
         this.testedURL = true;
         this.clearData();
@@ -370,20 +402,26 @@ export default {
         this.progress = 0;
         this.hasDownloaded = false;
         this.isDownloading = true;
-        ytdl(this.url, opts)
-          .on("progress", (chunkSize, downloaded, size) => {
-            this.progress = Math.round((downloaded / size) * 100);
-          })
-          .on("finish", () => {
-            this.hasDownloaded = true;
-            this.isDownloading = false;
-            resolve(true);
-          })
-          .on("error", (err) => {
-            console.error(err);
-            reject(false);
-          })
-          .pipe(fs.createWriteStream(this.outputPath));
+        try {
+          ytdl(this.url, opts)
+            .on("progress", (chunkSize, downloaded, size) => {
+              this.progress = Math.round((downloaded / size) * 100);
+            })
+            .on("finish", () => {
+              this.hasDownloaded = true;
+              this.isDownloading = false;
+              resolve(true);
+            })
+            .on("error", (err) => {
+              console.error(err);
+              this.createError("Video unavailable");
+              reject(false);
+            })
+            .pipe(fs.createWriteStream(this.outputPath));
+        } catch (err) {
+          console.error(err);
+          this.createError("Video unavailable");
+        }
       });
     },
     generateJSXText() {
@@ -405,15 +443,58 @@ export default {
       this.channelName = "";
       this.hasDownloaded = false;
       this.isDownloading = false;
+      this.isComplete = false;
+    },
+    setCSS(prop, data) {
+      document.documentElement.style.setProperty(
+        `${/^\-\-/.test(prop) ? prop : "--" + prop}`,
+        data
+      );
+    },
+    getCSS(prop) {
+      return window
+        .getComputedStyle(document.documentElement)
+        .getPropertyValue(`${/^\-\-/.test(prop) ? prop : "--" + prop}`);
     },
   },
 };
 </script>
 
 <style>
+:root {
+  --error-top: -70px;
+}
 .home-wrapper {
   min-height: 580;
   min-width: 300px;
+}
+.error-container {
+  max-height: 56px;
+  height: 56px;
+  margin-top: 0px;
+  box-sizing: border-box;
+  justify-content: center;
+  display: flex;
+  top: var(--error-top);
+  transition: top 120ms var(--quad) 20ms;
+  left: 0;
+  width: 100vw;
+  padding: 16px 10px 10px 10px;
+  background-color: var(--color-btn-toolbar-active);
+  position: absolute;
+  z-index: 99;
+}
+.error-content {
+  box-sizing: border-box;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  flex-wrap: none;
+}
+
+.error-container .button.flat:hover {
+  background: transparent;
+  border-color: transparent;
 }
 
 .picker-row {

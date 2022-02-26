@@ -2,15 +2,18 @@
   <div id="app">
     <Menus
       refresh
-      debug
       :context="[
         {
-          label: 'Reset',
-          callback: this.testClick,
+          label: 'About',
+          callback: this.visitHomepage,
+        },
+        {
+          label: 'Clear settings',
+          callback: this.removeSettings,
         },
       ]"
     />
-    <Panel>
+    <Panel no-utils script-path="host.jsx">
       <router-view />
     </Panel>
   </div>
@@ -19,13 +22,16 @@
 <script>
 import { mapActions } from "vuex";
 import { evalScript } from "brutalism";
+import { openURL } from "cluecumber";
 export default {
   data: () => ({}),
   methods: {
     ...mapActions("settings", ["deleteAll"]),
-    testClick(item) {
-      // this.deleteAll();
-      console.log("Click");
+    visitHomepage() {
+      openURL("https://github.com/Inventsable/snatch#snatch");
+    },
+    removeSettings() {
+      this.deleteAll();
     },
     async runTestScript() {
       let result = await evalScript(`
