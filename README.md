@@ -74,7 +74,7 @@ It's best to do it here on Github in the Issues panel. I do actively respond to 
 
 ## Can I donate or buy you a coffee?
 
-I had a lot of requests for this, so I've included a donate link in the context menu when you right click on the panel. This tool is and will always be free, but if it happens to be a godsend for your work in particular and you feel the need to show some appreciation, I certainly appreciate it as well -- not to mention this gives me a lot more incentive and freedom to actively pursue updating this tool and adding requested features.
+I had a lot of requests for this, so [I've included a donate link](https://paypal.me/inventsable?country.x=US&locale.x=en_US) in the context menu when you right click on the panel. This tool is and will always be free, but if it happens to be a godsend for your work in particular and you feel the need to show some appreciation, I certainly appreciate it as well -- not to mention this gives me a lot more incentive and freedom to actively pursue updating this tool and adding requested features.
 
 ## Why does this look so similar to [Timelord and Anubis from Battle Axe](https://www.battleaxe.co/)?
 
