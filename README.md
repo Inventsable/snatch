@@ -44,7 +44,7 @@ Maybe, but this isn't as straightforward as you might think. The majority of ava
 
 ## I get an error saying "File of this same path is in use by the app"
 
-PPRO is kind of greedy with file access once you import files. The panel can and should be removing any files that would share the same name as a new download, but the app may have locked read/write privileges because it's currently reading the file, even if that file is no longer in your project panel. This causes an EPERM (permissions) error, it something I can only warn a user about but not manually fix.
+PPRO is kind of greedy with file access once you import files. The panel can and should be removing any files that would share the same name as a new download, but the app may have locked read/write privileges because it's currently reading the file, even if that file is no longer in your project panel. This causes an EPERM (permissions) error, and is something I can only warn a user about but not manually fix.
 
 ## It isn't working for a certain Youtube link
 
@@ -63,6 +63,14 @@ No, because **this is not a piracy tool.**
 ## Any plans for adding other platforms beyond Youtube?
 
 Not at the moment because I was exploring the [ytdl-core](https://github.com/fent/node-ytdl-core#readme) API and this relies on it to do the heavy lifting.
+
+## It isn't working like in these videos on my computer and with my version of the apps. Where do I file a bug report?
+
+It's best to do it here on Github in the Issues panel. I do actively respond to threads I've made showcasing it on reddit so if you reply to me there, I'm guaranteed to read it and (unless it's been mentioned many times before) almost guaranteed to reply.
+
+## Can I donate or buy you a coffee?
+
+I had a lot of requests for this, so I've included a donate link in the context menu when you right click on the panel. This tool is and will always be free, but if it happens to be a godsend for your work in particular and you feel the need to show some appreciation, I certainly appreciate it as well -- not to mention this gives me a lot more incentive and freedom to actively pursue updating this tool and adding requested features.
 
 ## Why does this look so similar to [Timelord and Anubis from Battle Axe](https://www.battleaxe.co/)?
 
