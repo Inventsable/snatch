@@ -36,7 +36,12 @@
           v-model="audioOnly"
           style="margin-right: 16px"
         />
-        <Toggle label="Best video quality" v-model="bestQuality" />
+        <Toggle
+          label="Video only"
+          v-model="videoOnly"
+          style="margin-right: 16px"
+        />
+        <Toggle label="Best of both" v-model="bestQuality" />
       </div>
     </Fold>
     <Fold label="Preview" :open="true">
@@ -49,13 +54,6 @@
         </div>
       </div>
       <div style="margin-top: 8px"></div>
-      <!-- <Anno
-        size="11px"
-        :color="!validURL ? 'var(--color-btn-disabled-text)' : ''"
-      >
-        <Link v-if="validURL" :url="channelLink">{{ channelName }}</Link>
-        <div v-else>No channel</div>
-      </Anno> -->
       <Anno
         size="11px"
         :color="!validURL ? 'var(--color-btn-disabled-text)' : ''"
@@ -86,13 +84,11 @@ const ytdl = require("ytdl-core");
 const cp = require("child_process");
 const readline = require("readline");
 const ffmpegLocale = `${spy.path.root}/ffmpeg`;
-// const ffmpeg = require("../../ffmpeg/");
 
-// import path from "path";
+// Promisified shell commands for running FFMPEG async:
 import util from "util";
 const exec = util.promisify(require("child_process").exec);
-// import { Pully, Presets } from "pully";
-// const pully = new Pully();
+
 export default {
   components: {
     "Progress-Bar": require("../components/ProgressBar.vue").default,
@@ -118,6 +114,8 @@ export default {
     chunkPrefix: 0,
     isComplete: false,
     contextText: "",
+    hasError: false,
+    errorText: "",
   }),
   async mounted() {
     this.getSettings();
@@ -134,7 +132,16 @@ export default {
         ? `${this.contextText} ${this.progress}%`
         : this.hasDownloaded
         ? this.contextText
-        : "Snatch";
+        : `Snatch ${this.snatchContext}`;
+    },
+    snatchContext() {
+      return this.videoOnly
+        ? "best video"
+        : this.audioOnly
+        ? "best audio"
+        : this.bestQuality
+        ? "best video/audio"
+        : "fastest good quality";
     },
     useCustomDir: {
       get() {
@@ -152,6 +159,14 @@ export default {
         this.setAudioOnly(val);
       },
     },
+    videoOnly: {
+      get() {
+        return this.settings.videoOnly;
+      },
+      set(val) {
+        this.setVideoOnly(val);
+      },
+    },
     bestQuality: {
       get() {
         return this.settings.bestQuality;
@@ -160,21 +175,8 @@ export default {
         this.setBestQuality(val);
       },
     },
-    ytdlOptions() {
-      // Likely be best to generate a dropdown containing all format options.
-      // Still unsure how to best solve 1080p, may opt for a CLI tool entirely instead
-      return {
-        filter: this.audioOnly ? "audioonly" : "audioandvideo",
-        quality: this.audioOnly ? "highest" : "highestvideo",
-      };
-    },
     canDownload() {
-      return (
-        this.hasValidURL &&
-        this.outputFolder.length &&
-        !this.isDownloading &&
-        !this.hasDownloaded
-      );
+      return this.hasValidURL && !this.isDownloading && !this.hasDownloaded;
     },
     vidDescription() {
       return this.validURL ? this.realTitle : "No title";
@@ -200,7 +202,7 @@ export default {
       return !this.hasNoURL && this.validURL;
     },
     outputPath() {
-      // @NOTE - Should be replaced with dynamic formats
+      // @NOTE - Could be replaced with dynamic formats, but it might be too taking things a bit too far
       return `${this.outputFolder}/${this.title}.mp${
         this.audioOnly ? "3" : "4"
       }`;
@@ -208,8 +210,12 @@ export default {
   },
   watch: {
     settings: {
-      handler(evt) {
-        if (this.hasDownloaded) this.hasDownloaded = false;
+      handler() {
+        if (this.hasDownloaded) {
+          this.isComplete = false;
+          this.hasDownloaded = false;
+          this.isDownloading = false;
+        }
       },
       deep: true,
     },
@@ -221,13 +227,46 @@ export default {
       "setBestQuality",
       "setOutputDir",
       "setAudioOnly",
+      "setVideoOnly",
       "getSettings",
     ]),
+    async ytdlOptions() {
+      // Likely be best to generate a dropdown containing all format options.
+      // Still unsure how to best solve 1080p, may opt for a CLI tool entirely instead
+      if (this.videoOnly) {
+        let info = await ytdl.getInfo(this.url);
+        let videoFormats = ytdl
+          .filterFormats(info.formats, "videoonly")
+          .filter(
+            (format) =>
+              format.container == "mp4" &&
+              format.hasAudio == false &&
+              format.itag !== 399
+          )
+          .sort((a, b) => b.height - a.height);
+        console.log(videoFormats[0]);
+        console.log(videoFormats[0].itag);
+        return { quality: videoFormats[0].itag };
+      } else
+        return {
+          filter: this.audioOnly ? "audioonly" : "audioandvideo",
+          quality: this.audioOnly ? "highest" : "highestvideo",
+        };
+    },
     updateOutput(data) {
       if (Array.isArray(data) && data.length) this.outputFolder = data[0];
       else {
         console.error("Unexpected non-Array fed into File-Picker:", data);
       }
+    },
+    createError(text) {
+      this.isDownloading = false;
+      this.hasDownloaded = false;
+      this.isComplete = false;
+      this.contextText = "";
+      this.percent = 0;
+      this.hasError = true;
+      this.errorText = text;
     },
     async checkURL(data) {
       this.setUrl(data);
@@ -259,20 +298,53 @@ export default {
         return false;
       }
     },
+    async getParentRootFromJSX() {
+      console.log("Get root parent:");
+      let result;
+      if (spy.appName == "AEFT") {
+        result = await evalScript(`(function() {
+          return app.project.file.fsName;
+        }())`);
+      } else {
+        result = await evalScript(`(function() {
+          return File(app.project.path).parent.fsName;
+        }())`);
+      }
+      if (/evalscript\serror/i.test(result)) {
+        console.error("Eval error, silent failure");
+        this.createError("Project must be saved first");
+        return null;
+      }
+      return result.replace(/\\/g, "/").replace(/\/$/, "");
+    },
     async beginDownload() {
-      // PPRO apparently breaks with the JSON polyfill nowadays, good to know, glad it took an hour of debugging before I figured it out.
-      // let data = {
-      //   file: this.outputPath,
-      //   title: this.title,
-      //   options: {
-      //     foo: "bar",
-      //   },
-      // };
+      if (!this.canDownload) {
+        console.error("Func is running without valid URL or params");
+        return null;
+      }
+      this.progress = this.chunkPrefix = 0;
+      this.isDownloading = true;
+      this.hasDownloaded = false;
+      this.isComplete = false;
+      if (!this.useCustomDir) {
+        this.contextText = "Retrieving project filepath";
+        let parentRoot = await this.getParentRootFromJSX();
+        if (parentRoot) {
+          console.log(this.outputFolder);
+          this.outputFolder = parentRoot;
+        } else {
+          this.isDownloading = false;
+          return null;
+        }
+      }
 
       // Ensure that no read/write streams fail from conflicting pre-existing file access
       try {
         if (fs.existsSync(this.outputPath)) fs.unlinkSync(this.outputPath);
       } catch (err) {
+        this.createError(
+          "File with this same name is already in use by the app"
+        );
         console.error(`Not able to delete previous file:`, err);
       }
 
@@ -283,6 +355,8 @@ export default {
         let injection = await evalScript(this.generateJSXText());
         console.log(injection);
       }
+      this.isDownloading = false;
+      this.isComplete = true;
     },
     async downloadTest() {
       const { stdout, stderr } = await exec(`"${ffmpegLocale}/ffmpeg" -help`);
@@ -327,10 +401,6 @@ export default {
     },
     async downloadAndMuxVideo() {
       this.contextText = "Prepping";
-      this.progress = this.chunkPrefix = 0;
-      this.isDownloading = true;
-      this.hasDownloaded = false;
-      this.isComplete = false;
       const uid = new Date().getTime().toString();
 
       let info = await ytdl.getInfo(this.url);
@@ -346,19 +416,18 @@ export default {
       const audio = await this.getHighestAudio(uid);
       const video = await this.getHighestVideo(uid);
       this.hasDownloaded = true;
-      let cmdString = `"${ffmpegLocale}/ffmpeg" -i "${this.outputFolder}/${uid}.mp4" -i "${this.outputFolder}/${uid}.mp3" -c:v copy -c:a aac -b:a 128k -ar 48000 -ac 2 "${this.outputFolder}/${this.title}.mp4"`;
-      console.log(cmdString);
-      this.contextText = "Mixing audio and video...";
+      // let debugString = `"${} -v warning -progress /dev/stdout -i in.mp4 out.mp4`
+      let cmdString = `"${ffmpegLocale}/ffmpeg" -i "${this.outputFolder}/${uid}.mp4" -i "${this.outputFolder}/${uid}.mp3" -c:v libx264 -c:a aac -map 0:v:0 -map 1:a:0 "${this.outputFolder}/${this.title}.mp4"`;
+      this.contextText = "Muxing (this can take a while)";
       const { stdout, stderr } = await exec(cmdString);
       console.log(stdout, stderr);
-      console.log("Muxed");
       this.contextText = "Cleaning up temp files...";
       fs.unlinkSync(`${this.outputFolder}/${uid}.mp3`);
       fs.unlinkSync(`${this.outputFolder}/${uid}.mp4`);
       this.contextText = "Importing...";
       let injection = await evalScript(this.generateJSXText());
       if (injection) {
-        console.log("Done?");
+        console.log("Done");
       }
       this.isDownloading = false;
       this.isComplete = true;
@@ -366,18 +435,14 @@ export default {
       // fs.unlinkSync()
     },
     async downloadAndInjectVideoYTDL() {
-      if (!this.canDownload) {
-        console.error("Func is running without valid URL or params");
-        return null;
-      }
+      this.contextText = "Determining best format";
+      let opts = await this.ytdlOptions();
       return new Promise((resolve, reject) => {
         this.contextText = "Snatching";
-        console.log(this.settings.audioOnly);
-        console.log(this.outputPath);
         this.progress = 0;
         this.hasDownloaded = false;
         this.isDownloading = true;
-        ytdl(this.url, this.ytdlOptions)
+        ytdl(this.url, opts)
           .on("progress", (chunkSize, downloaded, size) => {
             this.progress = Math.round((downloaded / size) * 100);
           })

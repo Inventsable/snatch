@@ -3,6 +3,7 @@ const LocalStorage = window.localStorage;
 const state = {
   settings: {
     audioOnly: false,
+    videoOnly: false,
     url: "",
     outputDir: "",
     useRootDir: false,
@@ -12,11 +13,24 @@ const state = {
 
 const mutations = {
   setAudioOnly(state, value) {
-    if (value) state.settings.audioOnly = value;
-    state.settings.bestQuality = false;
+    if (value) {
+      state.settings.bestQuality = false;
+      state.settings.videoOnly = false;
+    }
+    state.settings.audioOnly = value;
+  },
+  setVideoOnly(state, value) {
+    if (value) {
+      state.settings.bestQuality = false;
+      state.settings.audioOnly = false;
+    }
+    state.settings.videoOnly = value;
   },
   setBestQuality(state, value) {
-    if (value) state.settings.audioOnly = false;
+    if (value) {
+      state.settings.audioOnly = false;
+      state.settings.videoOnly = false;
+    }
     state.settings.bestQuality = value;
   },
   setUseRootDir(state, value) {
@@ -36,6 +50,10 @@ const mutations = {
 const actions = {
   setAudioOnly({ commit, dispatch }, value) {
     commit("setAudioOnly", value);
+    dispatch("saveSettings");
+  },
+  setVideoOnly({ commit, dispatch }, value) {
+    commit("setVideoOnly", value);
     dispatch("saveSettings");
   },
   setBestQuality({ commit, dispatch }, value) {
