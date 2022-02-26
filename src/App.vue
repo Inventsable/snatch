@@ -11,6 +11,14 @@
           label: 'Clear settings',
           callback: this.removeSettings,
         },
+        {
+          label: 'Something wrong? Report a bug',
+          callback: this.reportBug,
+        },
+        {
+          label: 'Donate (only if you want to)',
+          callback: this.paypalLink,
+        },
       ]"
     />
     <Panel no-utils script-path="./host.jsx">
@@ -29,6 +37,12 @@ export default {
     ...mapActions("settings", ["deleteAll"]),
     visitHomepage() {
       openURL("https://github.com/Inventsable/snatch#snatch");
+    },
+    paypalLink() {
+      openURL("https://paypal.me/inventsable?country.x=US&locale.x=en_US");
+    },
+    reportBug() {
+      openURL("https://github.com/Inventsable/snatch/issues/new");
     },
     removeSettings() {
       this.deleteAll();
