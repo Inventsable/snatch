@@ -342,6 +342,9 @@ export default {
         result = await evalScript(`(function() {
           return File(app.project.file).parent.fsName;
         }())`);
+      } else if (spy.appName == "AUDT") {
+        // AUDT not supported. I'd love to add it, but there's little to no info about AUDT scripting online
+        return null;
       } else {
         result = await evalScript(`(function() {
           return File(app.project.path).parent.fsName;
@@ -460,10 +463,12 @@ export default {
         return `app.project.importFiles([new File("${this.outputPath
           .replace(/\\/gm, "/")
           .replace(/\//gm, "\\\\")}").fsName]);`;
-      } else {
+      } else if (spy.appName == "AEFT") {
         return `app.project.importFile(new ImportOptions(new File("${this.outputPath
           .replace(/\\/gm, "/")
           .replace(/\//gm, "\\\\")}")));`;
+      } else {
+        // Would love to add Audition support but information about scripting in AUDT is non-existent
       }
     },
     clearData() {
