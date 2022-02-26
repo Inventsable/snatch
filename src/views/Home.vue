@@ -266,8 +266,8 @@ export default {
     async ytdlOptions() {
       // Likely be best to generate a dropdown containing all format options.
       // Still unsure how to best solve 1080p, may opt for a CLI tool entirely instead
+      let info = await ytdl.getInfo(this.url);
       if (this.videoOnly) {
-        let info = await ytdl.getInfo(this.url);
         let videoFormats = ytdl
           .filterFormats(info.formats, "videoonly")
           .filter(
@@ -277,13 +277,17 @@ export default {
               format.itag !== 399
           )
           .sort((a, b) => b.height - a.height);
-        console.log(videoFormats[0]);
-        console.log(videoFormats[0].itag);
         return { quality: videoFormats[0].itag };
+      } else if (this.audioOnly) {
+        let audioFormats = ytdl
+          .filterFormats(info.formats, "audioonly")
+          .filter((format) => /mp4/i.test(format.codecs))
+          .sort((a, b) => b.audioBitrate - a.audioBitrate);
+        return { quality: audioFormats[0].itag };
       } else
         return {
-          filter: this.audioOnly ? "audioonly" : "audioandvideo",
-          quality: this.audioOnly ? "highest" : "highestvideo",
+          filter: "audioandvideo",
+          quality: "highestvideo",
         };
     },
     updateOutput(data) {

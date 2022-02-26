@@ -8,6 +8,11 @@ const state = {
     outputDir: "",
     useRootDir: false,
     bestQuality: false,
+    enableCrop: false,
+    startTime: "",
+    endTime: "",
+    startBit: 0,
+    endBit: 0,
   },
 };
 
@@ -32,6 +37,9 @@ const mutations = {
       state.settings.videoOnly = false;
     }
     state.settings.bestQuality = value;
+  },
+  setEnableCrop(state, value) {
+    state.settings.enableCrop = value;
   },
   setUseRootDir(state, value) {
     state.settings.useRootDir = value;
