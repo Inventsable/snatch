@@ -22,6 +22,10 @@ Above link not working? You can visit the [./archive](https://github.com/Invents
 
 [Check out an explanation here](https://help.battleaxe.co/overlord/#installation).
 
+## How do I download this?
+
+Putting the user agreement above in [niram](https://niram.org/read/) gives an estimated reading time of 41 seconds. This tool is free, [please take less than a minute to read the user agreement](#mandatory-user-agreement).
+
 ## Does this support **\_\_\_\_\_\_**?
 
 If it's anything more complex than a plain URL (no added time parameters) at the highest available quality, then probably not. I don't plan on developing this much further because I don't personally have a need for other features, plus I have no idea if any one in the world is going to use it.
